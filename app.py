@@ -8,11 +8,22 @@ from selenium.webdriver.support import expected_conditions as EC
 import customtkinter as ctk
 import os
 import sys
+import threading
 
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
+
+def atualizar_progresso_maringa(progresso_atual, total_linhas):
+    progresso = progresso_atual / total_linhas
+    progress_maringa.set(progresso)
+    app.update_idletasks()  # Atualiza a interface gráfica
+
+def atualizar_progresso_tapejara(progresso_atual, total_linhas):
+    progresso = progresso_atual / total_linhas
+    progress_tapejara.set(progresso)
+    app.update_idletasks()
 
 maringa_file = os.path.join(application_path, 'codigos_maringa.xlsx')
 tapejara_file = os.path.join(application_path, 'codigos_tapejara.xlsx')
@@ -55,6 +66,15 @@ def salvar_progresso_tapejara(linha):
     with open("progresso_tapejara.txt", "w") as file:
         file.write(str(linha))
 
+def pegar_debitos_maringa_thread():
+    # Função que roda o Selenium em uma thread separada
+    thread = threading.Thread(target=pegar_debitos_maringa)
+    thread.start()
+
+def pegar_debitos_tapejara_thread():
+    thread = threading.Thread(target=pegar_debitos_tapejara)
+    thread.start()
+
 
 def pegar_debitos_maringa():
     driver = webdriver.Chrome()
@@ -62,7 +82,7 @@ def pegar_debitos_maringa():
     
     ultima_linha_processada_maringa = ler_progresso_maringa()
     
-
+    total_linhas = sheet_debitos_maringa.max_row
     for linha in sheet_debitos_maringa.iter_rows(min_row=ultima_linha_processada_maringa, max_row=5):
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
@@ -100,6 +120,7 @@ def pegar_debitos_maringa():
                   continue
             
             salvar_progresso_maringa(linha[0].row + 1)
+            app.after(0, atualizar_progresso_maringa, linha[0].row, total_linhas)
 
                  
 
@@ -107,10 +128,12 @@ def pegar_debitos_maringa():
     driver.quit()  
 
 def pegar_debitos_tapejara():
-    ultima_linha_processada_tapejara = ler_progresso_tapejara()
+    
     driver = webdriver.Chrome()
     driver.get('https://tapejara.eloweb.net/portal-contribuinte/consulta-debitos')
-      
+
+    ultima_linha_processada_tapejara = ler_progresso_tapejara()
+    total_linhas = sheet_debitos_tapejara.max_row
 
     for linha in sheet_debitos_tapejara.iter_rows(min_row=ultima_linha_processada_tapejara, max_row=5):
             nome_empresa_tapejara = linha[0].value
@@ -146,6 +169,7 @@ def pegar_debitos_tapejara():
                   print('empresa com debitos')
             
             salvar_progresso_tapejara(linha[0].row + 1)
+            app.after(0, atualizar_progresso_tapejara, linha[0].row, total_linhas)
                  
 
     wb_resultado.save('empresas_sem_debitos.xlsx')
@@ -180,14 +204,15 @@ description_label = ctk.CTkLabel(
 )
 description_label.pack(pady=10)
 
-progress = ctk.CTkProgressBar(app, width=300)
-progress.pack(pady=20)
+progress_maringa = ctk.CTkProgressBar(app, width=300)
+progress_maringa.set(0.0)  # Inicializa com progresso 0%
+progress_maringa.pack(pady=10)
 
 
 button_maringa = ctk.CTkButton(
     app, 
     text="Prefeitura de Maringá/PR", 
-    command=pegar_debitos_maringa,
+    command=pegar_debitos_maringa_thread,
     font=("Helvetica", 14), 
     width=300, 
     height=40, 
@@ -196,11 +221,14 @@ button_maringa = ctk.CTkButton(
 )
 button_maringa.pack(pady=15)
 
+progress_tapejara = ctk.CTkProgressBar(app, width=300)
+progress_tapejara.set(0.0)  # Inicializa com progresso 0%
+progress_tapejara.pack(pady=10)
 
 button_tapejara = ctk.CTkButton(
     app, 
     text="Prefeitura de Tapejara/PR", 
-    command=pegar_debitos_tapejara,
+    command=pegar_debitos_tapejara_thread,
     font=("Helvetica", 14), 
     width=300, 
     height=40, 
