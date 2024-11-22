@@ -28,13 +28,42 @@ sheet_resultado = wb_resultado.active
 sheet_resultado.title = "Empresas Sem Débitos"
 sheet_resultado.append(['Nome da Empresa', 'Código Municipal', 'Mensagem'])
 
+def ler_progresso_maringa():
+    if os.path.exists("progresso_maringa.txt"):
+        with open("progresso_maringa.txt", "r") as file:
+            return int(file.read().strip())
+    return 2  # Se não houver progresso registrado, começa da linha 2
+
+# Função para salvar o progresso
+def salvar_progresso_maringa(linha):
+    with open("progresso_maringa.txt", "w") as file:
+        file.write(str(linha))
+
+
+def ler_progresso_tapejara():
+    arquivo_progresso = "progresso_tapejara.txt"
+    if os.path.exists(arquivo_progresso):
+        with open(arquivo_progresso, "r") as file:
+            return int(file.read().strip())
+    else:
+        # Cria o arquivo de progresso se não existir
+        with open(arquivo_progresso, "w") as file:
+            file.write("2")  # Inicia com a linha 2
+        return 2
+
+def salvar_progresso_tapejara(linha):
+    with open("progresso_tapejara.txt", "w") as file:
+        file.write(str(linha))
+
+
 def pegar_debitos_maringa():
     driver = webdriver.Chrome()
     driver.get('https://tributos.maringa.pr.gov.br/portal-contribuinte/consulta-debitos')
     
+    ultima_linha_processada_maringa = ler_progresso_maringa()
     
 
-    for linha in sheet_debitos_maringa.iter_rows(min_row=2,max_row=5):
+    for linha in sheet_debitos_maringa.iter_rows(min_row=ultima_linha_processada_maringa, max_row=5):
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
 
@@ -60,6 +89,7 @@ def pegar_debitos_maringa():
             pyautogui.press('TAB')
             sleep(1)
             pyautogui.press('ENTER')
+            
             sleep(2)
         
             empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
@@ -69,6 +99,7 @@ def pegar_debitos_maringa():
             else:
                   continue
             
+            salvar_progresso_maringa(linha[0].row + 1)
 
                  
 
@@ -76,11 +107,12 @@ def pegar_debitos_maringa():
     driver.quit()  
 
 def pegar_debitos_tapejara():
+    ultima_linha_processada_tapejara = ler_progresso_tapejara()
     driver = webdriver.Chrome()
     driver.get('https://tapejara.eloweb.net/portal-contribuinte/consulta-debitos')
       
 
-    for linha in sheet_debitos_tapejara.iter_rows(min_row=2,max_row=2):
+    for linha in sheet_debitos_tapejara.iter_rows(min_row=ultima_linha_processada_tapejara, max_row=5):
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
             
@@ -113,7 +145,7 @@ def pegar_debitos_tapejara():
             else:
                   print('empresa com debitos')
             
-
+            salvar_progresso_tapejara(linha[0].row + 1)
                  
 
     wb_resultado.save('empresas_sem_debitos.xlsx')
