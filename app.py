@@ -9,6 +9,7 @@ import customtkinter as ctk
 import os
 import sys
 import threading
+import requests
 
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
@@ -112,12 +113,15 @@ def pegar_debitos_maringa():
             
             sleep(2)
         
-            empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
-            if empresa_sem_debitos:
-                 sheet_resultado.append([nome_empresa_maringa, codigo_municipal_maringa, 'Empresa sem débitos'])
-                 sleep(1)
-            else:
-                  continue
+            try:
+                empresa_sem_debitos = WebDriverWait(driver, 3).until(
+                    EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
+                )
+                if empresa_sem_debitos:
+                    sheet_resultado.append([nome_empresa_maringa, codigo_municipal_maringa, 'Empresa sem débitos'])
+                    print(f"Empresa {nome_empresa_maringa} SEM débitos.")
+            except:
+                print(f"Empresa {nome_empresa_maringa} COM débitos.")
             
             salvar_progresso_maringa(linha[0].row + 1)
             app.after(0, atualizar_progresso_maringa, linha[0].row, total_linhas)
@@ -150,7 +154,7 @@ def pegar_debitos_tapejara():
             if not codigo_municipal_tapejara:
                 continue
 
-            campo_cod_municipal = WebDriverWait(driver, 20).until(
+            campo_cod_municipal = WebDriverWait(driver, 10).until(
                 EC.visibility_of_element_located((By.XPATH, "(//input[@placeholder='Digite o cadastro...'])[2]"))
             )
             campo_cod_municipal.clear()
@@ -163,14 +167,75 @@ def pegar_debitos_tapejara():
             sleep(2)
         
             empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
-            if empresa_sem_debitos:
-                 sheet_resultado.append([nome_empresa_tapejara, codigo_municipal_tapejara, 'Empresa sem débitos'])
-            else:
-                  print('empresa com debitos')
-            
-            salvar_progresso_tapejara(linha[0].row + 1)
-            app.after(0, atualizar_progresso_tapejara, linha[0].row, total_linhas)
-                 
+            sleep(2)
+    
+            try:
+                empresa_sem_debitos = WebDriverWait(driver, 3).until(
+                    EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
+                )
+                if empresa_sem_debitos:
+                    sheet_resultado.append([nome_empresa_tapejara, codigo_municipal_tapejara, 'Empresa sem débitos'])
+                    print(f"Empresa {nome_empresa_tapejara} SEM débitos.")
+            except:
+                print(f"Empresa {nome_empresa_tapejara} COM débitos.") 
+                try: 
+                    label = WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "label.checkbox-item-label"))
+                        )
+                    label.click()
+                except  Exception as e:
+                     print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
+                
+                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_tapejara)
+
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                try:
+                    boleto = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "em.fa.fa-file-text-o")) #botao do boleto com JS
+                    )
+                    driver.execute_script("arguments[0].click();", boleto)
+
+                    # Aguardar a abertura de uma nova janela (pop-up ou aba)
+                    WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 1)
+
+                    # Mudar para a nova janela (pop-up ou aba)
+                    driver.switch_to.window(driver.window_handles[-1])
+
+                    boleto_link = driver.current_url   #pega URL DO LINK
+
+                    if boleto_link:
+                        print("Link do boleto encontrado:", boleto_link)
+                        
+                        # Fazer o download do boleto usando requests
+                        response = requests.get(boleto_link)
+
+                        if response.status_code == 200:
+                            nome_arquivo = f"{nome_empresa_tapejara}_boleto.pdf"
+                            caminho_arquivo = os.path.join(folder_path, nome_arquivo)
+
+                        
+                            with open(caminho_arquivo, 'wb') as f:
+                                f.write(response.content)
+
+                            print(f"Boleto salvo em: {caminho_arquivo}")
+                        else:
+                            print("Falha ao baixar o boleto. Status code:", response.status_code)
+
+                    else:
+                        print("Não foi possível obter o link do boleto.")
+
+                except Exception as e:
+                    print(f"Ocorreu um erro ao tentar acessar o link do boleto: {e}")
+                    
+                pyautogui.hotkey('ctrl', 'w')
+                sleep(2)
+                WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 0)
+
+                # Alternar para a última janela que permanece aberta
+                driver.switch_to.window(driver.window_handles[-1])
+                
 
     wb_resultado.save('empresas_sem_debitos.xlsx')
     driver.quit()  
