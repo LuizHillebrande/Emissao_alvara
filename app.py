@@ -10,7 +10,6 @@ import os
 import sys
 
 if getattr(sys, 'frozen', False):
-    
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
@@ -33,26 +32,30 @@ def pegar_debitos_maringa():
     driver = webdriver.Chrome()
     driver.get('https://tributos.maringa.pr.gov.br/portal-contribuinte/consulta-debitos')
     
-        
-    select_element = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
-        )
     
-    select = Select(select_element)
-    select.select_by_value("1")  
-        
-    sleep(1)
 
-    for linha in sheet_debitos_maringa.iter_rows(min_row=2,max_row=2):
+    for linha in sheet_debitos_maringa.iter_rows(min_row=2,max_row=5):
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
+
+            select_element = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
+                )
+            
+            select = Select(select_element)
+            select.select_by_value("1")  
+                
+            sleep(1)
 
             if not codigo_municipal_maringa:
                 continue
 
-            pyautogui.press('TAB')
-            pyautogui.write(str(codigo_municipal_maringa))
+            campo_cod_municipal = WebDriverWait(driver, 20).until(
+                EC.visibility_of_element_located((By.XPATH, "(//input[@placeholder='Digite o cadastro...'])[2]"))
+            )
+            campo_cod_municipal.clear()
             sleep(1)
+            campo_cod_municipal.send_keys(str(codigo_municipal_maringa))
 
             pyautogui.press('TAB')
             sleep(1)
@@ -62,6 +65,7 @@ def pegar_debitos_maringa():
             empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
             if empresa_sem_debitos:
                  sheet_resultado.append([nome_empresa_maringa, codigo_municipal_maringa, 'Empresa sem débitos'])
+                 sleep(1)
             else:
                   continue
             
@@ -75,24 +79,28 @@ def pegar_debitos_tapejara():
     driver = webdriver.Chrome()
     driver.get('https://tapejara.eloweb.net/portal-contribuinte/consulta-debitos')
       
-    selecionar_elemento = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
-    )
-    
-    selecionar = Select(selecionar_elemento)
-    selecionar.select_by_value("1")  
-    sleep(1) 
 
     for linha in sheet_debitos_tapejara.iter_rows(min_row=2,max_row=2):
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
-
+            
+            selecionar_elemento = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
+            )
+            
+            selecionar = Select(selecionar_elemento)
+            selecionar.select_by_value("1")  
+            sleep(1) 
+            
             if not codigo_municipal_tapejara:
                 continue
 
-            pyautogui.press('TAB')
-            pyautogui.write(str(codigo_municipal_tapejara))
+            campo_cod_municipal = WebDriverWait(driver, 20).until(
+                EC.visibility_of_element_located((By.XPATH, "(//input[@placeholder='Digite o cadastro...'])[2]"))
+            )
+            campo_cod_municipal.clear()
             sleep(1)
+            campo_cod_municipal.send_keys(str(codigo_municipal_tapejara))
 
             pyautogui.press('TAB')
             sleep(1)
@@ -122,8 +130,6 @@ screen_width = app.winfo_screenwidth()
 screen_height = app.winfo_screenheight()
 app.geometry(f"{screen_width}x{screen_height-40}+0+0")
 
-
-
 title_label = ctk.CTkLabel(
     app, 
     text="Controle de Débitos Municipais", 
@@ -141,6 +147,9 @@ description_label = ctk.CTkLabel(
     justify="center"
 )
 description_label.pack(pady=10)
+
+progress = ctk.CTkProgressBar(app, width=300)
+progress.pack(pady=20)
 
 
 button_maringa = ctk.CTkButton(
