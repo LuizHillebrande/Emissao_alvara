@@ -5,7 +5,18 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
+import customtkinter as ctk
+import os
+import sys
 
+if getattr(sys, 'frozen', False):
+    
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+maringa_file = os.path.join(application_path, 'codigos_maringa.xlsx')
+tapejara_file = os.path.join(application_path, 'codigos_tapejara.xlsx')
 
 wb_debitos_maringa = openpyxl.load_workbook('codigos_maringa.xlsx')
 sheet_debitos_maringa = wb_debitos_maringa['Planilha1']
@@ -35,6 +46,9 @@ def pegar_debitos_maringa():
     for linha in sheet_debitos_maringa.iter_rows(min_row=2,max_row=2):
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
+
+            if not codigo_municipal_maringa:
+                continue
 
             pyautogui.press('TAB')
             pyautogui.write(str(codigo_municipal_maringa))
@@ -73,6 +87,9 @@ def pegar_debitos_tapejara():
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
 
+            if not codigo_municipal_tapejara:
+                continue
+
             pyautogui.press('TAB')
             pyautogui.write(str(codigo_municipal_tapejara))
             sleep(1)
@@ -93,6 +110,79 @@ def pegar_debitos_tapejara():
 
     wb_resultado.save('empresas_sem_debitos.xlsx')
     driver.quit()  
-    
 
-pegar_debitos_tapejara()
+#INTERFACE GRÁFICA
+
+ctk.set_appearance_mode("Dark")  
+ctk.set_default_color_theme("dark-blue")  
+
+app = ctk.CTk()
+app.title("Office automation")
+screen_width = app.winfo_screenwidth()
+screen_height = app.winfo_screenheight()
+app.geometry(f"{screen_width}x{screen_height-40}+0+0")
+
+
+
+title_label = ctk.CTkLabel(
+    app, 
+    text="Controle de Débitos Municipais", 
+    font=("Helvetica", 30, "bold"), 
+    text_color="#ffffff"
+)
+title_label.pack(pady=20)
+
+description_label = ctk.CTkLabel(
+    app, 
+    text="Selecione a prefeitura para consultar os débitos das empresas.", 
+    font=("Helvetica", 16), 
+    text_color="#c9c9c9", 
+    wraplength=450,  
+    justify="center"
+)
+description_label.pack(pady=10)
+
+
+button_maringa = ctk.CTkButton(
+    app, 
+    text="Prefeitura de Maringá/PR", 
+    command=pegar_debitos_maringa,
+    font=("Helvetica", 14), 
+    width=300, 
+    height=40, 
+    fg_color="#007acc",  
+    hover_color="#005b99",  
+)
+button_maringa.pack(pady=15)
+
+
+button_tapejara = ctk.CTkButton(
+    app, 
+    text="Prefeitura de Tapejara/PR", 
+    command=pegar_debitos_tapejara,
+    font=("Helvetica", 14), 
+    width=300, 
+    height=40, 
+    fg_color="#007acc",  
+    hover_color="#005b99",  
+)
+button_tapejara.pack(pady=15)
+
+
+footer_label = ctk.CTkLabel(
+    app, 
+    text="Desenvolvido por Luiz Fernando Hillebrande", 
+    font=("Helvetica", 10), 
+    text_color="#c9c9c9"
+)
+footer_label.pack(side="bottom", pady=25)
+
+app.grid_rowconfigure(0, weight=1)
+app.grid_columnconfigure(0, weight=1)
+
+def sair_tela_cheia( event = None):
+    app.attributes('-fullscreen', False)
+
+app.bind("<Escape>", sair_tela_cheia)
+
+app.mainloop()
