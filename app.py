@@ -11,6 +11,8 @@ import sys
 import threading
 import requests
 
+paused = False
+
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
@@ -85,6 +87,9 @@ def pegar_debitos_maringa():
     
     total_linhas = sheet_debitos_maringa.max_row
     for linha in sheet_debitos_maringa.iter_rows(min_row=ultima_linha_processada_maringa, max_row=5):
+            while paused:  # Aguarda enquanto a execução está pausada
+                salvar_progresso_maringa(linha[0].row + 1)  # Salva o progresso atual
+                sleep(1)  # Evita sobrecarregar o loop
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
 
@@ -121,10 +126,71 @@ def pegar_debitos_maringa():
                     sheet_resultado.append([nome_empresa_maringa, codigo_municipal_maringa, 'Empresa sem débitos'])
                     print(f"Empresa {nome_empresa_maringa} SEM débitos.")
             except:
-                print(f"Empresa {nome_empresa_maringa} COM débitos.")
+                print(f"Empresa {nome_empresa_maringa} COM débitos.") 
+                try: 
+                    label = WebDriverWait(driver, 3).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "label.checkbox-item-label"))
+                        )
+                    label.click()
+                except  Exception as e:
+                     print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
+                
+                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_maringa)
+
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                try:
+                    boleto = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "em.fa.fa-file-text-o")) #botao do boleto com JS
+                    )
+                    driver.execute_script("arguments[0].click();", boleto)
+
+                    # Aguardar a abertura de uma nova janela (pop-up ou aba)
+                    WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 1)
+
+                    # Mudar para a nova janela (pop-up ou aba)
+                    driver.switch_to.window(driver.window_handles[-1])
+
+                    boleto_link = driver.current_url   #pega URL DO LINK
+
+                    if boleto_link:
+                        print("Link do boleto encontrado:", boleto_link)
+                        
+                        # Fazer o download do boleto usando requests
+                        response = requests.get(boleto_link)
+
+                        if response.status_code == 200:
+                            nome_arquivo = f"{nome_empresa_maringa}_boleto.pdf"
+                            caminho_arquivo = os.path.join(folder_path, nome_arquivo)
+
+                        
+                            with open(caminho_arquivo, 'wb') as f:
+                                f.write(response.content)
+
+                            print(f"Boleto salvo em: {caminho_arquivo}")
+                        else:
+                            print("Falha ao baixar o boleto. Status code:", response.status_code)
+
+                    else:
+                        print("Não foi possível obter o link do boleto.")
+
+                except Exception as e:
+                    print(f"Ocorreu um erro ao tentar acessar o link do boleto: {e}")
+                    
+                pyautogui.hotkey('ctrl', 'w')
+                sleep(2)
+                WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 0)
+
+                # Alternar para a última janela que permanece aberta
+                driver.switch_to.window(driver.window_handles[-1])
+                
+
+    wb_resultado.save('empresas_sem_debitos.xlsx')
+    driver.quit()  
             
-            salvar_progresso_maringa(linha[0].row + 1)
-            app.after(0, atualizar_progresso_maringa, linha[0].row, total_linhas)
+    
+    app.after(0, atualizar_progresso_maringa, linha[0].row, total_linhas)
 
                  
 
@@ -140,6 +206,9 @@ def pegar_debitos_tapejara():
     total_linhas = sheet_debitos_tapejara.max_row
 
     for linha in sheet_debitos_tapejara.iter_rows(min_row=ultima_linha_processada_tapejara, max_row=5):
+            while paused:  # Aguarda enquanto a execução está pausada
+                salvar_progresso_tapejara(linha[0].row +1)  # Salva o progresso atual
+                sleep(1)  # Evita sobrecarregar o loop
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
             
@@ -240,16 +309,38 @@ def pegar_debitos_tapejara():
     wb_resultado.save('empresas_sem_debitos.xlsx')
     driver.quit()  
 
+def toggle_pause():
+    global paused
+    paused = not paused  # Alterna entre True e False
+    if paused:
+        pause_button.configure(text="Continuar")
+    else:
+        pause_button.configure(text="Pausar")
+
 #INTERFACE GRÁFICA
 
 ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme("dark-blue")  
+
+
 
 app = ctk.CTk()
 app.title("Office automation")
 screen_width = app.winfo_screenwidth()
 screen_height = app.winfo_screenheight()
 app.geometry(f"{screen_width}x{screen_height-40}+0+0")
+
+pause_button = ctk.CTkButton(
+    app,
+    text="Pausar",
+    command=toggle_pause,
+    font=("Helvetica", 14),
+    width=300,
+    height=40,
+    fg_color="#ff5722",  # Cor para indicar pausa
+    hover_color="#e64a19",
+)
+pause_button.pack(pady=15)
 
 title_label = ctk.CTkLabel(
     app, 
