@@ -113,7 +113,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
             sleep(2)
         
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 15).until(
+                empresa_sem_debitos = WebDriverWait(driver, 25).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
@@ -195,7 +195,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
 
     for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=5):
             print(f"Processando linha: {linha[0].row}") 
-            salvar_progresso_tapejara(linha[0].row)  # Salva o progresso atual
+            salvar_progresso_tapejara(linha[0].row)  
             wb_resultado.save('empresas_sem_debitos_tapejara.xlsx')
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
@@ -227,7 +227,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
             sleep(2)
     
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 3).until(
+                empresa_sem_debitos = WebDriverWait(driver, 25).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
