@@ -10,21 +10,14 @@ import os
 import sys
 import threading
 import requests
+from tkinter import messagebox  
 
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 
-def atualizar_progresso_maringa(progresso_atual, total_linhas):
-    progresso = progresso_atual / total_linhas
-    progress_maringa.set(progresso)
-    app.update_idletasks()  # Atualiza a interface gráfica
 
-def atualizar_progresso_tapejara(progresso_atual, total_linhas):
-    progresso = progresso_atual / total_linhas
-    progress_tapejara.set(progresso)
-    app.update_idletasks()
 
 maringa_file = os.path.join(application_path, 'codigos_maringa.xlsx')
 tapejara_file = os.path.join(application_path, 'codigos_tapejara.xlsx')
@@ -67,28 +60,26 @@ def salvar_progresso_tapejara(linha):
     with open("progresso_tapejara.txt", "w") as file:
         file.write(str(linha))
 
-def pegar_debitos_maringa_thread():
-    # Função que roda o Selenium em uma thread separada
-    thread = threading.Thread(target=pegar_debitos_maringa)
-    thread.start()
-
-def pegar_debitos_tapejara_thread():
-    thread = threading.Thread(target=pegar_debitos_tapejara)
-    thread.start()
+def pegar_debitos_maringa(linha_inicial_maringa):
+    if threading.current_thread().name == "MainThread":
+        print("Executando na thread principal")
+    else:
+        print("Executando em uma thread separada")  
 
 
-def pegar_debitos_maringa():
     driver = webdriver.Chrome()
     driver.get('https://tributos.maringa.pr.gov.br/portal-contribuinte/consulta-debitos')
     
     ultima_linha_processada_maringa = ler_progresso_maringa()
     
     total_linhas = sheet_debitos_maringa.max_row
-    for linha in sheet_debitos_maringa.iter_rows(min_row=ultima_linha_processada_maringa, max_row=5):
+    for linha in sheet_debitos_maringa.iter_rows(min_row=linha_inicial_maringa, max_row=5):
+            salvar_progresso_maringa(linha[0].row) 
+            wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
             nome_empresa_maringa = linha[0].value
             codigo_municipal_maringa = linha[1].value
 
-            select_element = WebDriverWait(driver, 10).until(
+            select_element = WebDriverWait(driver, 15).until(
                     EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
                 )
             
@@ -114,32 +105,95 @@ def pegar_debitos_maringa():
             sleep(2)
         
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 3).until(
+                empresa_sem_debitos = WebDriverWait(driver, 15).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
                     sheet_resultado.append([nome_empresa_maringa, codigo_municipal_maringa, 'Empresa sem débitos'])
                     print(f"Empresa {nome_empresa_maringa} SEM débitos.")
             except:
-                print(f"Empresa {nome_empresa_maringa} COM débitos.")
+                print(f"Empresa {nome_empresa_maringa} COM débitos.") 
+                try: 
+                    label = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "label.checkbox-item-label"))
+                        )
+                    label.click()
+                except  Exception as e:
+                     print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
+                
+                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_maringa)
+
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+
+                try:
+                    boleto = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "em.fa.fa-file-text-o")) #botao do boleto com JS
+                    )
+                    driver.execute_script("arguments[0].click();", boleto)
+
+                    # Aguardar a abertura de uma nova janela (pop-up ou aba)
+                    WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 1)
+
+                    # Mudar para a nova janela (pop-up ou aba)
+                    driver.switch_to.window(driver.window_handles[-1])
+
+                    boleto_link = driver.current_url   #pega URL DO LINK
+
+                    if boleto_link:
+                        print("Link do boleto encontrado:", boleto_link)
+                        
+                        # Fazer o download do boleto usando requests
+                        response = requests.get(boleto_link)
+
+                        if response.status_code == 200:
+                            nome_arquivo = f"{nome_empresa_maringa}_boleto.pdf"
+                            caminho_arquivo = os.path.join(folder_path, nome_arquivo)
+
+                        
+                            with open(caminho_arquivo, 'wb') as f:
+                                f.write(response.content)
+
+                            print(f"Boleto salvo em: {caminho_arquivo}")
+                        else:
+                            print("Falha ao baixar o boleto. Status code:", response.status_code)
+
+                    else:
+                        print("Não foi possível obter o link do boleto.")
+
+                except Exception as e:
+                    print(f"Ocorreu um erro ao tentar acessar o link do boleto: {e}")
+                    
+                pyautogui.hotkey('ctrl', 'w')
+                sleep(2)
+                WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 0)
+
+                # Alternar para a última janela que permanece aberta
+                driver.switch_to.window(driver.window_handles[-1])
+                
+
+    
+    driver.quit()  
             
-            salvar_progresso_maringa(linha[0].row + 1)
-            app.after(0, atualizar_progresso_maringa, linha[0].row, total_linhas)
+    
+    
 
                  
 
     wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
     driver.quit()  
 
-def pegar_debitos_tapejara():
+def pegar_debitos_tapejara(linha_inicial_tapejara):
     
     driver = webdriver.Chrome()
     driver.get('https://tapejara.eloweb.net/portal-contribuinte/consulta-debitos')
 
-    ultima_linha_processada_tapejara = ler_progresso_tapejara()
     total_linhas = sheet_debitos_tapejara.max_row
 
-    for linha in sheet_debitos_tapejara.iter_rows(min_row=ultima_linha_processada_tapejara, max_row=5):
+    for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=5):
+            print(f"Processando linha: {linha[0].row}") 
+            salvar_progresso_tapejara(linha[0].row)  # Salva o progresso atual
+            wb_resultado.save('empresas_sem_debitos_tapejara.xlsx')
             nome_empresa_tapejara = linha[0].value
             codigo_municipal_tapejara = linha[1].value
             
@@ -233,24 +287,56 @@ def pegar_debitos_tapejara():
                 sleep(2)
                 WebDriverWait(driver, 10).until(lambda driver: len(driver.window_handles) > 0)
 
+
                 # Alternar para a última janela que permanece aberta
                 driver.switch_to.window(driver.window_handles[-1])
                 
 
-    wb_resultado.save('empresas_sem_debitos.xlsx')
+    
     driver.quit()  
+
+
 
 #INTERFACE GRÁFICA
 
+def iniciar_maringa():
+    try:    
+
+        linha_inicial_maringa = int(entry_maringa.get())
+        if linha_inicial_maringa < 2:
+            raise ValueError("A linha inicial deve ser maior que 1.")
+        
+        thread = threading.Thread(target=pegar_debitos_maringa, args=(linha_inicial_maringa,))
+        thread.start()
+    except ValueError as e:
+        messagebox.showerror("Erro", f"Entrada inválida para Maringá: {e}")
+        return
+
+def iniciar_tapejara():
+    try:
+        # Obtém o valor inserido no campo de entrada
+        linha_inicial_tapejara = int(entry_tapejara.get())
+        if linha_inicial_tapejara < 2:
+            raise ValueError("A linha inicial deve ser maior que 1.")
+        
+        thread = threading.Thread(target=pegar_debitos_tapejara, args=(linha_inicial_tapejara,))
+        thread.start()
+    except ValueError as e:
+        messagebox.showerror("Erro", f"Entrada inválida para Tapejara: {e}")
+        return
+    
+# Configuração do tema da interface gráfica
 ctk.set_appearance_mode("Dark")  
 ctk.set_default_color_theme("dark-blue")  
 
+# Criação do aplicativo
 app = ctk.CTk()
 app.title("Office automation")
 screen_width = app.winfo_screenwidth()
 screen_height = app.winfo_screenheight()
 app.geometry(f"{screen_width}x{screen_height-40}+0+0")
 
+# Título
 title_label = ctk.CTkLabel(
     app, 
     text="Controle de Débitos Municipais", 
@@ -259,6 +345,7 @@ title_label = ctk.CTkLabel(
 )
 title_label.pack(pady=20)
 
+# Descrição
 description_label = ctk.CTkLabel(
     app, 
     text="Selecione a prefeitura para consultar os débitos das empresas.", 
@@ -269,15 +356,23 @@ description_label = ctk.CTkLabel(
 )
 description_label.pack(pady=10)
 
-progress_maringa = ctk.CTkProgressBar(app, width=300)
-progress_maringa.set(0.0)  # Inicializa com progresso 0%
-progress_maringa.pack(pady=10)
+# Campo de entrada para Maringá
+entry_maringa = ctk.CTkEntry(
+    app, 
+    placeholder_text="Digite a linha inicial para Maringá", 
+    font=("Helvetica", 14), 
+    width=300
+)
+entry_maringa.pack(pady=10)
+
+# Barra de progresso para Maringá
 
 
+# Botão para Maringá
 button_maringa = ctk.CTkButton(
     app, 
-    text="Prefeitura de Maringá/PR", 
-    command=pegar_debitos_maringa_thread,
+    text="Iniciar prefeitura de Maringá/PR", 
+    command=iniciar_maringa,
     font=("Helvetica", 14), 
     width=300, 
     height=40, 
@@ -286,14 +381,20 @@ button_maringa = ctk.CTkButton(
 )
 button_maringa.pack(pady=15)
 
-progress_tapejara = ctk.CTkProgressBar(app, width=300)
-progress_tapejara.set(0.0)  # Inicializa com progresso 0%
-progress_tapejara.pack(pady=10)
+# Campo de entrada para Tapejara
+entry_tapejara = ctk.CTkEntry(
+    app, 
+    placeholder_text="Digite a linha inicial para Tapejara", 
+    font=("Helvetica", 14), 
+    width=300
+)
+entry_tapejara.pack(pady=10)
 
+# Botão para Tapejara
 button_tapejara = ctk.CTkButton(
     app, 
-    text="Prefeitura de Tapejara/PR", 
-    command=pegar_debitos_tapejara_thread,
+    text="Iniciar prefeitura de Tapejara/PR", 
+    command=iniciar_tapejara,
     font=("Helvetica", 14), 
     width=300, 
     height=40, 
@@ -302,7 +403,7 @@ button_tapejara = ctk.CTkButton(
 )
 button_tapejara.pack(pady=15)
 
-
+# Rodapé
 footer_label = ctk.CTkLabel(
     app, 
     text="Desenvolvido por Luiz Fernando Hillebrande", 
@@ -311,12 +412,15 @@ footer_label = ctk.CTkLabel(
 )
 footer_label.pack(side="bottom", pady=25)
 
+# Configurações de layout da interface
 app.grid_rowconfigure(0, weight=1)
 app.grid_columnconfigure(0, weight=1)
 
-def sair_tela_cheia( event = None):
+# Função para sair da tela cheia
+def sair_tela_cheia(event=None):
     app.attributes('-fullscreen', False)
 
 app.bind("<Escape>", sair_tela_cheia)
 
+# Inicia o loop da interface gráfica
 app.mainloop()
