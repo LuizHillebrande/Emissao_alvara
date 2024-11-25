@@ -32,6 +32,15 @@ sheet_resultado = wb_resultado.active
 sheet_resultado.title = "Empresas Sem Débitos"
 sheet_resultado.append(['Nome da Empresa', 'Código Municipal', 'Mensagem'])
 
+def atualizar_ultima_linha_maringa():
+    ultima_linha_maringa = ler_progresso_maringa()
+    ultima_maringa.configure(text=f"(Última linha processada: {ultima_linha_maringa})")
+
+
+def atualizar_ultima_linha_tapejara():
+    ultima_linha_tapejara = ler_progresso_tapejara()
+    ultima_tapejara.configure(text=f"(Última linha processada: {ultima_linha_tapejara})")
+
 def ler_progresso_maringa():
     if os.path.exists("progresso_maringa.txt"):
         with open("progresso_maringa.txt", "r") as file:
@@ -169,18 +178,13 @@ def pegar_debitos_maringa(linha_inicial_maringa):
 
                 # Alternar para a última janela que permanece aberta
                 driver.switch_to.window(driver.window_handles[-1])
-                
-
-    
-    driver.quit()  
             
     
-    
-
-                 
 
     wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
     driver.quit()  
+    
+    
 
 def pegar_debitos_tapejara(linha_inicial_tapejara):
     
@@ -298,31 +302,51 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
 
 #INTERFACE GRÁFICA
 
-def iniciar_maringa():
-    try:    
+def verificar_thread_maringa(thread):
+    if thread.is_alive():
+        app.after(1000, verificar_thread_maringa, thread)
+    else:
+        atualizar_ultima_linha_maringa()
 
+def verificar_thread_tapejara(thread):
+    if thread.is_alive():
+        app.after(1000, verificar_thread_tapejara, thread)
+    else:
+        atualizar_ultima_linha_tapejara()
+
+thread_maringa = None
+thread_tapejara = None
+
+def iniciar_maringa():
+    global thread_maringa
+    try:
         linha_inicial_maringa = int(entry_maringa.get())
         if linha_inicial_maringa < 2:
             raise ValueError("A linha inicial deve ser maior que 1.")
         
-        thread = threading.Thread(target=pegar_debitos_maringa, args=(linha_inicial_maringa,))
-        thread.start()
+        thread_maringa = threading.Thread(target=pegar_debitos_maringa, args=(linha_inicial_maringa,))
+        thread_maringa.start()
+
+        app.after(1000, verificar_thread_maringa, thread_maringa)
+
     except ValueError as e:
         messagebox.showerror("Erro", f"Entrada inválida para Maringá: {e}")
-        return
+
 
 def iniciar_tapejara():
+    global thread_tapejara
     try:
-        # Obtém o valor inserido no campo de entrada
         linha_inicial_tapejara = int(entry_tapejara.get())
         if linha_inicial_tapejara < 2:
             raise ValueError("A linha inicial deve ser maior que 1.")
         
-        thread = threading.Thread(target=pegar_debitos_tapejara, args=(linha_inicial_tapejara,))
-        thread.start()
+        thread_tapejara = threading.Thread(target=pegar_debitos_tapejara, args=(linha_inicial_tapejara,))
+        thread_tapejara.start()
+
+        app.after(1000, verificar_thread_tapejara, thread_tapejara)
+
     except ValueError as e:
         messagebox.showerror("Erro", f"Entrada inválida para Tapejara: {e}")
-        return
     
 # Configuração do tema da interface gráfica
 
@@ -360,7 +384,7 @@ label_img_maringa.pack(pady=10)
 # Campo de entrada para Maringá
 entry_maringa = ctk.CTkEntry(
     frame_maringa, 
-    placeholder_text="Digite a linha inicial para Maringá", 
+    placeholder_text="Digite a linha inicial do Excel para Maringá", 
     font=("Helvetica", 14), 
     width=300
 )
@@ -401,7 +425,7 @@ label_img_tapejara.pack(pady=10)
 # Campo de entrada para Tapejara
 entry_tapejara = ctk.CTkEntry(
     frame_tapejara, 
-    placeholder_text="Digite a linha inicial para Tapejara", 
+    placeholder_text="Digite a linha inicial do Excel para Tapejara", 
     font=("Helvetica", 14), 
     width=300
 )
