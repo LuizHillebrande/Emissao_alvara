@@ -11,13 +11,12 @@ import sys
 import threading
 import requests
 from tkinter import messagebox  
+from PIL import Image, ImageTk
 
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
-
-
 
 maringa_file = os.path.join(application_path, 'codigos_maringa.xlsx')
 tapejara_file = os.path.join(application_path, 'codigos_tapejara.xlsx')
@@ -326,15 +325,16 @@ def iniciar_tapejara():
         return
     
 # Configuração do tema da interface gráfica
-ctk.set_appearance_mode("Dark")  
-ctk.set_default_color_theme("dark-blue")  
 
-# Criação do aplicativo
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("dark-blue")
+
 app = ctk.CTk()
 app.title("Office automation")
 screen_width = app.winfo_screenwidth()
 screen_height = app.winfo_screenheight()
 app.geometry(f"{screen_width}x{screen_height-40}+0+0")
+
 
 # Título
 title_label = ctk.CTkLabel(
@@ -345,32 +345,41 @@ title_label = ctk.CTkLabel(
 )
 title_label.pack(pady=20)
 
-# Descrição
-description_label = ctk.CTkLabel(
-    app, 
-    text="Selecione a prefeitura para consultar os débitos das empresas.", 
-    font=("Helvetica", 16), 
-    text_color="#c9c9c9", 
-    wraplength=450,  
-    justify="center"
-)
-description_label.pack(pady=10)
+
+main_frame = ctk.CTkFrame(app, fg_color="transparent")
+main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+
+frame_maringa = ctk.CTkFrame(main_frame)
+frame_maringa.pack(side="left", padx=210, pady=30, fill="y")
+
+
+img_maringa = ctk.CTkImage(Image.open("pref.maringa.png"), size=(300, 100))
+label_img_maringa = ctk.CTkLabel(frame_maringa, image=img_maringa, text="")
+label_img_maringa.pack(pady=10)
 
 # Campo de entrada para Maringá
 entry_maringa = ctk.CTkEntry(
-    app, 
+    frame_maringa, 
     placeholder_text="Digite a linha inicial para Maringá", 
     font=("Helvetica", 14), 
     width=300
 )
 entry_maringa.pack(pady=10)
 
-# Barra de progresso para Maringá
+ultima_linha_processada_maringa = ler_progresso_maringa()
+
+ultima_maringa = ctk.CTkLabel(
+    frame_maringa, 
+    text=f"(Última linha processada: {ultima_linha_processada_maringa})", 
+    font=("Helvetica", 14), 
+    width=300
+)
+ultima_maringa.pack(pady=10)
 
 
 # Botão para Maringá
 button_maringa = ctk.CTkButton(
-    app, 
+    frame_maringa, 
     text="Iniciar prefeitura de Maringá/PR", 
     command=iniciar_maringa,
     font=("Helvetica", 14), 
@@ -381,18 +390,36 @@ button_maringa = ctk.CTkButton(
 )
 button_maringa.pack(pady=15)
 
+frame_tapejara = ctk.CTkFrame(main_frame)
+frame_tapejara.pack(side="right", padx=145, pady=30, fill="y")
+
+img_tapejara = ctk.CTkImage(Image.open("pref.tapejara.png"), size=(300, 100))
+label_img_tapejara = ctk.CTkLabel(frame_tapejara, image=img_tapejara, text="")
+label_img_tapejara.pack(pady=10)
+
+
 # Campo de entrada para Tapejara
 entry_tapejara = ctk.CTkEntry(
-    app, 
+    frame_tapejara, 
     placeholder_text="Digite a linha inicial para Tapejara", 
     font=("Helvetica", 14), 
     width=300
 )
 entry_tapejara.pack(pady=10)
 
+ultima_linha_processada_tapejara = ler_progresso_tapejara()
+
+ultima_tapejara = ctk.CTkLabel(
+    frame_tapejara, 
+    text=f"(Última linha processada: {ultima_linha_processada_tapejara})",
+    font=("Helvetica", 14), 
+    width=300
+)
+ultima_tapejara.pack(pady=10)
+
 # Botão para Tapejara
 button_tapejara = ctk.CTkButton(
-    app, 
+    frame_tapejara, 
     text="Iniciar prefeitura de Tapejara/PR", 
     command=iniciar_tapejara,
     font=("Helvetica", 14), 
