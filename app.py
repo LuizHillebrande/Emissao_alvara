@@ -22,15 +22,15 @@ maringa_file = os.path.join(application_path, 'codigos_maringa.xlsx')
 tapejara_file = os.path.join(application_path, 'codigos_tapejara.xlsx')
 
 wb_debitos_maringa = openpyxl.load_workbook('codigos_maringa.xlsx')
-sheet_debitos_maringa = wb_debitos_maringa['Planilha1']
+sheet_debitos_maringa = wb_debitos_maringa['Maringa']
 
 wb_debitos_tapejara = openpyxl.load_workbook('codigos_tapejara.xlsx')
-sheet_debitos_tapejara = wb_debitos_tapejara['Planilha1']
+sheet_debitos_tapejara = wb_debitos_tapejara['Tapejara']
 
 wb_resultado = openpyxl.Workbook()
 sheet_resultado = wb_resultado.active
 sheet_resultado.title = "Empresas Sem Débitos"
-sheet_resultado.append(['Nome da Empresa', 'Código Municipal', 'Mensagem'])
+sheet_resultado.append(['Razão Social', 'Código Municipal', 'Mensagem'])
 
 def atualizar_ultima_linha_maringa():
     ultima_linha_maringa = ler_progresso_maringa()
@@ -85,7 +85,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
             salvar_progresso_maringa(linha[0].row) 
             wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
             nome_empresa_maringa = linha[0].value
-            codigo_municipal_maringa = linha[1].value
+            codigo_municipal_maringa = linha[3].value
 
             select_element = WebDriverWait(driver, 15).until(
                     EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
