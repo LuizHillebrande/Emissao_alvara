@@ -81,7 +81,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
     ultima_linha_processada_maringa = ler_progresso_maringa()
     
     total_linhas = sheet_debitos_maringa.max_row
-    for linha in sheet_debitos_maringa.iter_rows(min_row=linha_inicial_maringa, max_row=5):
+    for linha in sheet_debitos_maringa.iter_rows(min_row=linha_inicial_maringa, max_row=70):
             salvar_progresso_maringa(linha[0].row) 
             wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
             nome_empresa_maringa = linha[0].value
@@ -96,7 +96,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
                 
             sleep(1)
 
-            if not codigo_municipal_maringa:
+            if isinstance(codigo_municipal_maringa,str) and '-' in codigo_municipal_maringa:
                 continue
 
             campo_cod_municipal = WebDriverWait(driver, 20).until(
@@ -113,7 +113,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
             sleep(2)
         
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 25).until(
+                empresa_sem_debitos = WebDriverWait(driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
@@ -129,7 +129,8 @@ def pegar_debitos_maringa(linha_inicial_maringa):
                 except  Exception as e:
                      print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
                 
-                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_maringa)
+                folder_path = r'C:\Users\Hillebrande\Desktop\Puleman'
+                caminho_pdf = os.path.join(folder_path, nome_empresa_maringa)
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -193,12 +194,12 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
 
     total_linhas = sheet_debitos_tapejara.max_row
 
-    for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=5):
+    for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=100):
             print(f"Processando linha: {linha[0].row}") 
             salvar_progresso_tapejara(linha[0].row)  
             wb_resultado.save('empresas_sem_debitos_tapejara.xlsx')
             nome_empresa_tapejara = linha[0].value
-            codigo_municipal_tapejara = linha[1].value
+            codigo_municipal_tapejara = linha[3].value
             
             selecionar_elemento = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
@@ -208,7 +209,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
             selecionar.select_by_value("1")  
             sleep(1) 
             
-            if not codigo_municipal_tapejara:
+            if isinstance(codigo_municipal_tapejara, str) and '-' in codigo_municipal_tapejara:
                 continue
 
             campo_cod_municipal = WebDriverWait(driver, 10).until(
@@ -224,10 +225,10 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
             sleep(2)
         
             empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
-            sleep(2)
+            sleep(1)
     
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 25).until(
+                empresa_sem_debitos = WebDriverWait(driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
@@ -243,7 +244,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
                 except  Exception as e:
                      print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
                 
-                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_tapejara)
+                folder_path = os.path.join(r'C:\Users\Hillebrande\Desktop\Puleman', nome_empresa_tapejara)
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
