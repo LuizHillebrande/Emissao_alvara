@@ -68,7 +68,27 @@ def salvar_progresso_tapejara(linha):
     with open("progresso_tapejara.txt", "w") as file:
         file.write(str(linha))
 
-def pegar_debitos_maringa(linha_inicial_maringa):
+def salvar_caminho_maringa(caminho):
+    with open("caminho_maringa.txt", "w", encoding='utf-8') as file:
+        file.write(caminho)
+
+def carregar_caminho_maringa():
+    if os.path.exists("caminho_maringa.txt"):
+        with open("caminho_maringa.txt", "r", encoding='utf-8') as file:
+            return file.read().strip()
+    return ""
+
+def salvar_caminho_tapejara(caminho):
+    with open("caminho_tapejara.txt", "w", encoding='utf-8') as file:
+        file.write(caminho)
+
+def carregar_caminho_tapejara():
+    if os.path.exists("caminho_tapejara.txt"):
+        with open("caminho_tapejara.txt", "r", encoding='utf-8') as file:
+            return file.read().strip()
+    return ""
+
+def pegar_debitos_maringa(linha_inicial_maringa, folder_path_maringa):
     if threading.current_thread().name == "MainThread":
         print("Executando na thread principal")
     else:
@@ -81,7 +101,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
     ultima_linha_processada_maringa = ler_progresso_maringa()
     
     total_linhas = sheet_debitos_maringa.max_row
-    for linha in sheet_debitos_maringa.iter_rows(min_row=linha_inicial_maringa, max_row=5):
+    for linha in sheet_debitos_maringa.iter_rows(min_row=linha_inicial_maringa, max_row=479):
             salvar_progresso_maringa(linha[0].row) 
             wb_resultado.save('empresas_sem_debitos_maringa.xlsx')
             nome_empresa_maringa = linha[0].value
@@ -96,7 +116,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
                 
             sleep(1)
 
-            if not codigo_municipal_maringa:
+            if isinstance(codigo_municipal_maringa,str) and '-' in codigo_municipal_maringa:
                 continue
 
             campo_cod_municipal = WebDriverWait(driver, 20).until(
@@ -110,10 +130,10 @@ def pegar_debitos_maringa(linha_inicial_maringa):
             sleep(1)
             pyautogui.press('ENTER')
             
-            sleep(2)
+            sleep(15)
         
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 25).until(
+                empresa_sem_debitos = WebDriverWait(driver, 7).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
@@ -129,7 +149,8 @@ def pegar_debitos_maringa(linha_inicial_maringa):
                 except  Exception as e:
                      print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
                 
-                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_maringa)
+                folder_path = folder_path_maringa
+                caminho_pdf = os.path.join(folder_path, str(nome_empresa_maringa) if nome_empresa_maringa else "empresa_desconhecida")
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -155,7 +176,7 @@ def pegar_debitos_maringa(linha_inicial_maringa):
                         response = requests.get(boleto_link)
 
                         if response.status_code == 200:
-                            nome_arquivo = f"{nome_empresa_maringa}_boleto.pdf"
+                            nome_arquivo = f"{str(nome_empresa_maringa) if nome_empresa_maringa else 'empresa_desconhecida'}_boleto.pdf"
                             caminho_arquivo = os.path.join(folder_path, nome_arquivo)
 
                         
@@ -186,19 +207,19 @@ def pegar_debitos_maringa(linha_inicial_maringa):
     
     
 
-def pegar_debitos_tapejara(linha_inicial_tapejara):
+def pegar_debitos_tapejara(linha_inicial_tapejara, folder_path_tapejara):
     
     driver = webdriver.Chrome()
     driver.get('https://tapejara.eloweb.net/portal-contribuinte/consulta-debitos')
 
     total_linhas = sheet_debitos_tapejara.max_row
 
-    for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=5):
+    for linha in sheet_debitos_tapejara.iter_rows(min_row=linha_inicial_tapejara, max_row=479):
             print(f"Processando linha: {linha[0].row}") 
             salvar_progresso_tapejara(linha[0].row)  
             wb_resultado.save('empresas_sem_debitos_tapejara.xlsx')
             nome_empresa_tapejara = linha[0].value
-            codigo_municipal_tapejara = linha[1].value
+            codigo_municipal_tapejara = linha[3].value
             
             selecionar_elemento = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//select[@id='select-filter']"))
@@ -208,7 +229,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
             selecionar.select_by_value("1")  
             sleep(1) 
             
-            if not codigo_municipal_tapejara:
+            if isinstance(codigo_municipal_tapejara, str) and '-' in codigo_municipal_tapejara:
                 continue
 
             campo_cod_municipal = WebDriverWait(driver, 10).until(
@@ -224,10 +245,10 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
             sleep(2)
         
             empresa_sem_debitos = EC.visibility_of_element_located((By.XPATH,"//article[@class='info mt-xs']"))
-            sleep(2)
+            sleep(1)
     
             try:
-                empresa_sem_debitos = WebDriverWait(driver, 25).until(
+                empresa_sem_debitos = WebDriverWait(driver, 5).until(
                     EC.visibility_of_element_located((By.XPATH, "//article[@class='info mt-xs']"))
                 )
                 if empresa_sem_debitos:
@@ -243,7 +264,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
                 except  Exception as e:
                      print(f"Ocorreu um erro ao tentar clicar no checkbox: {e}")
                 
-                folder_path = os.path.join(r'C:\Users\Logika\Desktop\Boletos_Tapejara', nome_empresa_tapejara)
+                folder_path = folder_path_tapejara
 
                 if not os.path.exists(folder_path):
                     os.makedirs(folder_path)
@@ -269,7 +290,7 @@ def pegar_debitos_tapejara(linha_inicial_tapejara):
                         response = requests.get(boleto_link)
 
                         if response.status_code == 200:
-                            nome_arquivo = f"{nome_empresa_tapejara}_boleto.pdf"
+                            nome_arquivo = f"{str(nome_empresa_tapejara) if nome_empresa_tapejara else 'empresa_desconhecida'}_boleto.pdf"
                             caminho_arquivo = os.path.join(folder_path, nome_arquivo)
 
                         
@@ -324,7 +345,16 @@ def iniciar_maringa():
         if linha_inicial_maringa < 2:
             raise ValueError("A linha inicial deve ser maior que 1.")
         
-        thread_maringa = threading.Thread(target=pegar_debitos_maringa, args=(linha_inicial_maringa,))
+        # Obter o caminho da pasta do campo de entrada
+        folder_path_maringa = entry_pasta_maringa.get().strip()
+        if not folder_path_maringa:
+            messagebox.showerror("Erro", "Por favor, digite o caminho da pasta para Maringá.")
+            return
+        
+        # Salvar o caminho para uso futuro
+        salvar_caminho_maringa(folder_path_maringa)
+        
+        thread_maringa = threading.Thread(target=pegar_debitos_maringa, args=(linha_inicial_maringa, folder_path_maringa))
         thread_maringa.start()
 
         app.after(1000, verificar_thread_maringa, thread_maringa)
@@ -340,7 +370,16 @@ def iniciar_tapejara():
         if linha_inicial_tapejara < 2:
             raise ValueError("A linha inicial deve ser maior que 1.")
         
-        thread_tapejara = threading.Thread(target=pegar_debitos_tapejara, args=(linha_inicial_tapejara,))
+        # Obter o caminho da pasta do campo de entrada
+        folder_path_tapejara = entry_pasta_tapejara.get().strip()
+        if not folder_path_tapejara:
+            messagebox.showerror("Erro", "Por favor, digite o caminho da pasta para Tapejara.")
+            return
+        
+        # Salvar o caminho para uso futuro
+        salvar_caminho_tapejara(folder_path_tapejara)
+        
+        thread_tapejara = threading.Thread(target=pegar_debitos_tapejara, args=(linha_inicial_tapejara, folder_path_tapejara))
         thread_tapejara.start()
 
         app.after(1000, verificar_thread_tapejara, thread_tapejara)
@@ -390,6 +429,20 @@ entry_maringa = ctk.CTkEntry(
 )
 entry_maringa.pack(pady=10)
 
+# Campo de entrada para caminho da pasta de Maringá
+entry_pasta_maringa = ctk.CTkEntry(
+    frame_maringa, 
+    placeholder_text="Digite o caminho da pasta para salvar boletos (ex: Z:\\SOCIETÁRIO\\TAXAS DE ALVARÁ\\2025\\MARINGA)", 
+    font=("Helvetica", 14), 
+    width=300
+)
+entry_pasta_maringa.pack(pady=10)
+
+# Carregar caminho salvo para Maringá
+caminho_salvo_maringa = carregar_caminho_maringa()
+if caminho_salvo_maringa:
+    entry_pasta_maringa.insert(0, caminho_salvo_maringa)
+
 ultima_linha_processada_maringa = ler_progresso_maringa()
 
 ultima_maringa = ctk.CTkLabel(
@@ -430,6 +483,20 @@ entry_tapejara = ctk.CTkEntry(
     width=300
 )
 entry_tapejara.pack(pady=10)
+
+# Campo de entrada para caminho da pasta de Tapejara
+entry_pasta_tapejara = ctk.CTkEntry(
+    frame_tapejara, 
+    placeholder_text="Digite o caminho da pasta para salvar boletos (ex: Z:\\SOCIETÁRIO\\TAXAS DE ALVARÁ\\2025\\TAPEJARA)", 
+    font=("Helvetica", 14), 
+    width=300
+)
+entry_pasta_tapejara.pack(pady=10)
+
+# Carregar caminho salvo para Tapejara
+caminho_salvo_tapejara = carregar_caminho_tapejara()
+if caminho_salvo_tapejara:
+    entry_pasta_tapejara.insert(0, caminho_salvo_tapejara)
 
 ultima_linha_processada_tapejara = ler_progresso_tapejara()
 

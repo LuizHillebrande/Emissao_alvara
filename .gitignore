@@ -1,0 +1,42 @@
+# Build and distribution files
+build/
+dist/
+*.exe
+*.spec
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# Progress and configuration files (optional - remove if you want to track them)
+progresso_*.txt
+caminho_*.txt
+empresas_sem_debitos_*.xlsx
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp 
